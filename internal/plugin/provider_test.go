@@ -15,7 +15,7 @@ func TestNewProviderDefaultsName(t *testing.T) {
 
 	provider := NewProvider("")
 
-	require.Equal(t, "replace-me", provider.Name())
+	require.Equal(t, "provider-gitea", provider.Name())
 	require.NoError(t, provider.HealthCheck(context.Background()))
 }
 

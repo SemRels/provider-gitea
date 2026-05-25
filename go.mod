@@ -1,4 +1,4 @@
-module github.com/SemRels/plugin-template
+module github.com/SemRels/provider-gitea
 
 go 1.24
 
