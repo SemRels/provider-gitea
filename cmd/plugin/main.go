@@ -28,7 +28,7 @@ var newCreator = func(client *http.Client) releaseCreator {
 }
 
 func run(ctx context.Context, getenv func(string) string, stdout, stderr io.Writer) int {
-	fmt.Fprintf(stderr, "plugin_schema_version=%d\n", pluginSchemaVersion)
+	_, _ = fmt.Fprintf(stderr, "plugin_schema_version=%d\n", pluginSchemaVersion)
 	return runWithCreator(ctx, getenv, stdout, stderr, newCreator)
 }
 
