@@ -1,6 +1,6 @@
 # provider-gitea
 
-[![Latest Release](https://img.shields.io/github/v/release/SemRels/provider-gitea?label=version\&color=blue)](https://github.com/SemRels/provider-gitea/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/SemRels/provider-gitea?label=version&color=blue)](https://github.com/SemRels/provider-gitea/releases/latest)
 
 Publishes the semrel release to a Gitea instance.
 
