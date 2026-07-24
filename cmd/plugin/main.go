@@ -35,18 +35,18 @@ func run(ctx context.Context, getenv func(string) string, stdout, stderr io.Writ
 func runWithCreator(ctx context.Context, getenv func(string) string, stdout, stderr io.Writer, factory creatorFactory) int {
 	cfg, err := plugin.ConfigFromEnv(getenv)
 	if err != nil {
-		fmt.Fprintln(stderr, "provider-gitea:", err)
+		_, _ = fmt.Fprintln(stderr, "provider-gitea:", err)
 		return 1
 	}
 
 	if isDryRun(getenv("SEMREL_DRY_RUN")) {
-		fmt.Fprintf(stdout, "[dry-run] would create Gitea release %s for %s/%s\n", cfg.TagName, cfg.Owner, cfg.Repo)
+		_, _ = fmt.Fprintf(stdout, "[dry-run] would create Gitea release %s for %s/%s\n", cfg.TagName, cfg.Owner, cfg.Repo)
 		return 0
 	}
 
 	release, err := factory(nil).CreateRelease(ctx, cfg)
 	if err != nil {
-		fmt.Fprintln(stderr, "provider-gitea:", err)
+		_, _ = fmt.Fprintln(stderr, "provider-gitea:", err)
 		return 1
 	}
 
@@ -54,9 +54,9 @@ func runWithCreator(ctx context.Context, getenv func(string) string, stdout, std
 	case release == nil:
 		return 0
 	case release.URL != "":
-		fmt.Fprintln(stdout, release.URL)
+		_, _ = fmt.Fprintln(stdout, release.URL)
 	default:
-		fmt.Fprintf(stdout, "created release %d\n", release.ID)
+		_, _ = fmt.Fprintf(stdout, "created release %d\n", release.ID)
 	}
 
 	return 0
