@@ -58,11 +58,11 @@ func runWithCreator(ctx context.Context, getenv func(string) string, stdout, std
 	if cfg.CommentOnPRs && len(cfg.CommitHashes) > 0 {
 		commenter, ok := creator.(pullRequestCommenter)
 		if !ok {
-			fmt.Fprintln(stderr, "provider-gitea: release provider does not support pull request comments")
+			_, _ = fmt.Fprintln(stderr, "provider-gitea: release provider does not support pull request comments")
 			return 1
 		}
 		if err := commenter.CommentOnPullRequests(ctx, cfg, release); err != nil {
-			fmt.Fprintln(stderr, "provider-gitea:", err)
+			_, _ = fmt.Fprintln(stderr, "provider-gitea:", err)
 			return 1
 		}
 	}
