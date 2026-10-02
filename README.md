@@ -43,6 +43,7 @@ plugins:
       SEMREL_PLUGIN_OWNER: "acme"
       SEMREL_PLUGIN_REPO: "service-api"
       SEMREL_PLUGIN_DRAFT: "false"
+      SEMREL_PLUGIN_COMMENT_ON_PRS: "true"
 ```
 
 ## `SEMREL_PLUGIN_*` variables
@@ -54,6 +55,7 @@ plugins:
 | `SEMREL_PLUGIN_OWNER` | Optional | Repository owner. Defaults from the git remote when available. | Derived from git remote |
 | `SEMREL_PLUGIN_REPO` | Optional | Repository name. Defaults from the git remote when available. | Derived from git remote |
 | `SEMREL_PLUGIN_DRAFT` | Optional | Create the release as a draft. | false |
+| `SEMREL_PLUGIN_COMMENT_ON_PRS` | Optional | Comment on pull requests associated with commits in the release. The token needs repository read and issue write permissions. | false |
 
 ## `SEMREL_*` release context used
 
@@ -67,7 +69,7 @@ plugins:
 
 ## Example behavior
 
-The plugin creates a Gitea release for the current tag and uploads the generated release notes from semrel.
+The plugin creates a Gitea release for the current tag and uploads the generated release notes from semrel. When `SEMREL_PLUGIN_COMMENT_ON_PRS` is enabled, it posts an idempotent release link comment to associated pull requests.
 
 ## License
 
