@@ -40,6 +40,22 @@ func TestConfigFromEnvSuccess(t *testing.T) {
 	require.True(t, *cfg.Draft)
 	require.NotNil(t, cfg.Prerelease)
 	require.False(t, *cfg.Prerelease)
+	require.True(t, cfg.CommentOnPRs)
+}
+
+func TestConfigFromEnvCanDisablePullRequestComments(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := ConfigFromEnv(testEnv(map[string]string{
+		"SEMREL_PLUGIN_BASE_URL":       "https://gitea.example.com",
+		"SEMREL_PLUGIN_TOKEN":          "token",
+		"SEMREL_PLUGIN_OWNER":          "owner",
+		"SEMREL_PLUGIN_REPO":           "repo",
+		"SEMREL_TAG_NAME":              "v1.2.3",
+		"SEMREL_PLUGIN_COMMENT_ON_PRS": "false",
+	}))
+	require.NoError(t, err)
+	require.False(t, cfg.CommentOnPRs)
 }
 
 func TestConfigFromEnvUsesFallbacks(t *testing.T) {

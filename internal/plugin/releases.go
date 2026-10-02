@@ -84,7 +84,7 @@ func ConfigFromEnv(getenv func(string) string) (Config, error) {
 		Body:         getenv("SEMREL_PLUGIN_BODY"),
 		Draft:        draft,
 		Prerelease:   prerelease,
-		CommentOnPRs: commentOnPRs != nil && *commentOnPRs,
+		CommentOnPRs: commentOnPRs == nil || *commentOnPRs,
 	}
 	if cfg.CommentOnPRs {
 		hashes := strings.TrimSpace(getenv("SEMREL_COMMIT_HASHES"))
