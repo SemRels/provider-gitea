@@ -26,6 +26,7 @@ type Config struct {
 	Body         string
 	Draft        *bool
 	Prerelease   *bool
+	DryRun       bool
 	CommentOnPRs bool
 	CommitHashes []string
 }
@@ -74,9 +75,20 @@ func ConfigFromEnv(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("SEMREL_PLUGIN_COMMENT_ON_PRS: %w", err)
 	}
 
+	dryRun, err := parseOptionalBool(getenv("SEMREL_DRY_RUN"))
+	if err != nil {
+		return Config{}, fmt.Errorf("SEMREL_PLUGIN_DRY_RUN: %w", err)
+	}
+	isDryRun := dryRun != nil && *dryRun
+
+	baseURL := strings.TrimSpace(getenv("SEMREL_PLUGIN_BASE_URL"))
+	if baseURL == "" && isDryRun {
+		baseURL = "https://gitea.com"
+	}
+
 	cfg := Config{
-		BaseURL:      strings.TrimSpace(getenv("SEMREL_PLUGIN_BASE_URL")),
-		Token:        strings.TrimSpace(getenv("SEMREL_PLUGIN_TOKEN")),
+		BaseURL:      baseURL,
+		Token:        strings.TrimSpace(firstNonEmpty(getenv("SEMREL_PLUGIN_TOKEN"), getenv("GITEA_TOKEN"))),
 		Owner:        strings.TrimSpace(getenv("SEMREL_PLUGIN_OWNER")),
 		Repo:         strings.TrimSpace(getenv("SEMREL_PLUGIN_REPO")),
 		TagName:      strings.TrimSpace(firstNonEmpty(getenv("SEMREL_PLUGIN_TAG_NAME"), getenv("SEMREL_TAG_NAME"), getenv("SEMREL_VERSION"), getenv("SEMREL_NEXT_VERSION"))),
@@ -84,6 +96,7 @@ func ConfigFromEnv(getenv func(string) string) (Config, error) {
 		Body:         getenv("SEMREL_PLUGIN_BODY"),
 		Draft:        draft,
 		Prerelease:   prerelease,
+		DryRun:       isDryRun,
 		CommentOnPRs: commentOnPRs == nil || *commentOnPRs,
 	}
 	if cfg.CommentOnPRs {
@@ -328,7 +341,7 @@ func validateConfig(cfg Config) error {
 	if strings.TrimSpace(cfg.BaseURL) == "" {
 		missing = append(missing, "SEMREL_PLUGIN_BASE_URL")
 	}
-	if strings.TrimSpace(cfg.Token) == "" {
+	if !cfg.DryRun && strings.TrimSpace(cfg.Token) == "" {
 		missing = append(missing, "SEMREL_PLUGIN_TOKEN")
 	}
 	if strings.TrimSpace(cfg.Owner) == "" {

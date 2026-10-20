@@ -45,7 +45,18 @@ func runWithCreator(ctx context.Context, getenv func(string) string, stdout, std
 	}
 
 	if isDryRun(getenv("SEMREL_DRY_RUN")) {
+		if strings.TrimSpace(cfg.Token) == "" {
+			_, _ = fmt.Fprintln(stderr, "[dry-run] provider-gitea: would need GITEA_TOKEN (or SEMREL_PLUGIN_TOKEN) to create release")
+		}
+		_, _ = fmt.Fprintf(stderr, "[dry-run] provider-gitea: would create release %s for %s/%s\n", cfg.TagName, cfg.Owner, cfg.Repo)
 		_, _ = fmt.Fprintf(stdout, "[dry-run] would create Gitea release %s for %s/%s\n", cfg.TagName, cfg.Owner, cfg.Repo)
+		_, _ = fmt.Fprintf(stdout, "tag: %s\ntitle: %s\ntarget: %s/%s/%s\n", cfg.TagName, cfg.Name, strings.TrimRight(cfg.BaseURL, "/"), cfg.Owner, cfg.Repo)
+		if assets := strings.TrimSpace(getenv("SEMREL_PLUGIN_ASSETS")); assets != "" {
+			_, _ = fmt.Fprintf(stdout, "assets: %s\n", assets)
+		}
+		if cfg.Body != "" {
+			_, _ = fmt.Fprintf(stdout, "notes:\n%s\n", cfg.Body)
+		}
 		return 0
 	}
 
