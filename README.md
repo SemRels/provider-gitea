@@ -39,27 +39,29 @@ cosign verify ghcr.io/semrels/provider-gitea:latest \
 
 ```yaml
 plugins:
-  - name: provider-gitea
-    path: ~/.semrel/plugins/semrel-plugin-provider-gitea
-    env:
-      SEMREL_PLUGIN_BASE_URL: "https://gitea.example.com"
-      SEMREL_PLUGIN_TOKEN: "${GITEA_TOKEN}"
-      SEMREL_PLUGIN_OWNER: "acme"
-      SEMREL_PLUGIN_REPO: "service-api"
-      SEMREL_PLUGIN_DRAFT: "false"
-      SEMREL_PLUGIN_COMMENT_ON_PRS: "true"
+  - uses: "@semrel/provider-gitea"
+    phase: release
+    args:
+      base_url: "https://gitea.example.com"
+      token: "${GITEA_TOKEN}"
+      owner: "acme"
+      repo: "service-api"
+      draft: "false"
+      comment_on_prs: "true"
 ```
 
-## `SEMREL_PLUGIN_*` variables
+## Options
 
-| Name | Required | Description | Default |
-| --- | --- | --- | --- |
-| `SEMREL_PLUGIN_BASE_URL` | Required | Base URL of the Gitea instance. | None |
-| `SEMREL_PLUGIN_TOKEN` | Required | Gitea API token. | None |
-| `SEMREL_PLUGIN_OWNER` | Optional | Repository owner. Defaults from the git remote when available. | Derived from git remote |
-| `SEMREL_PLUGIN_REPO` | Optional | Repository name. Defaults from the git remote when available. | Derived from git remote |
-| `SEMREL_PLUGIN_DRAFT` | Optional | Create the release as a draft. | false |
-| `SEMREL_PLUGIN_COMMENT_ON_PRS` | Optional | Comment on pull requests associated with commits in the release. Defaults to true; set to `false` to disable. The token needs repository read and issue write permissions. | true |
+Every option can be set as an entry under `args` in `.semrel.yaml`. semrel passes each entry to the plugin as the environment variable shown in the table, so you can also set that variable directly (for example in your CI environment) instead of using `args`.
+
+| Argument | Environment variable | Required | Description | Default |
+| --- | --- | --- | --- | --- |
+| `base_url` | `SEMREL_PLUGIN_BASE_URL` | Required | Base URL of the Gitea instance. | None |
+| `token` | `SEMREL_PLUGIN_TOKEN` | Required | Gitea API token. | None |
+| `owner` | `SEMREL_PLUGIN_OWNER` | Optional | Repository owner. Defaults from the git remote when available. | Derived from git remote |
+| `repo` | `SEMREL_PLUGIN_REPO` | Optional | Repository name. Defaults from the git remote when available. | Derived from git remote |
+| `draft` | `SEMREL_PLUGIN_DRAFT` | Optional | Create the release as a draft. | false |
+| `comment_on_prs` | `SEMREL_PLUGIN_COMMENT_ON_PRS` | Optional | Comment on pull requests associated with commits in the release. Defaults to true; set to `false` to disable. The token needs repository read and issue write permissions. | true |
 
 ## `SEMREL_*` release context used
 
