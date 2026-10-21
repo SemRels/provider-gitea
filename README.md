@@ -1,6 +1,10 @@
 # provider-gitea
 
 [![Latest Release](https://img.shields.io/github/v/release/SemRels/provider-gitea?label=version&color=blue)](https://github.com/SemRels/provider-gitea/releases/latest)
+[![CI](https://github.com/SemRels/provider-gitea/actions/workflows/ci.yml/badge.svg)](https://github.com/SemRels/provider-gitea/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/SemRels/provider-gitea)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/SemRels/provider-gitea/badge)](https://scorecard.dev/viewer/?uri=github.com/SemRels/provider-gitea)
+[![REUSE status](https://api.reuse.software/badge/github.com/SemRels/provider-gitea)](https://api.reuse.software/info/github.com/SemRels/provider-gitea)
 
 Publishes the semrel release to a Gitea instance.
 
