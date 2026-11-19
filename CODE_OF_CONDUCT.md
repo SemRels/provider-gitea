@@ -1,6 +1,6 @@
 # Code of Conduct
 
-provider-gitea is committed to providing a welcoming and harassment-free community.
+`provider-gitea` is committed to providing a welcoming and harassment-free community.
 
 ## Our Pledge
 
