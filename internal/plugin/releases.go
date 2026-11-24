@@ -10,8 +10,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -24,6 +27,7 @@ type Config struct {
 	TagName      string
 	Name         string
 	Body         string
+	Assets       string
 	Draft        *bool
 	Prerelease   *bool
 	CommentOnPRs bool
@@ -82,6 +86,7 @@ func ConfigFromEnv(getenv func(string) string) (Config, error) {
 		TagName:      strings.TrimSpace(firstNonEmpty(getenv("SEMREL_PLUGIN_TAG_NAME"), getenv("SEMREL_TAG_NAME"), getenv("SEMREL_VERSION"), getenv("SEMREL_NEXT_VERSION"))),
 		Name:         strings.TrimSpace(firstNonEmpty(getenv("SEMREL_PLUGIN_NAME"), getenv("SEMREL_PLUGIN_TAG_NAME"), getenv("SEMREL_TAG_NAME"), getenv("SEMREL_VERSION"), getenv("SEMREL_NEXT_VERSION"))),
 		Body:         getenv("SEMREL_PLUGIN_BODY"),
+		Assets:       strings.TrimSpace(getenv("SEMREL_PLUGIN_ASSETS")),
 		Draft:        draft,
 		Prerelease:   prerelease,
 		CommentOnPRs: commentOnPRs == nil || *commentOnPRs,
@@ -163,8 +168,123 @@ func (c *creator) CreateRelease(ctx context.Context, cfg Config) (*Release, erro
 	if err := json.NewDecoder(resp.Body).Decode(&created); err != nil {
 		return nil, fmt.Errorf("decode release response: %w", err)
 	}
+	if cfg.Assets != "" {
+		if created.ID <= 0 {
+			return nil, fmt.Errorf("create Gitea release: response did not contain a valid release ID for asset upload")
+		}
+		if err := c.uploadReleaseAssets(ctx, cfg, created.ID); err != nil {
+			return nil, err
+		}
+	}
 
 	return &Release{ID: created.ID, URL: firstNonEmpty(created.HTMLURL, created.URL)}, nil
+}
+
+func (c *creator) uploadReleaseAssets(ctx context.Context, cfg Config, releaseID int64) error {
+	patterns := splitAssets(cfg.Assets)
+	if len(patterns) == 0 {
+		return fmt.Errorf("SEMREL_PLUGIN_ASSETS must contain at least one file path or glob pattern")
+	}
+	seen := make(map[string]struct{})
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			return fmt.Errorf("invalid asset pattern %q: %w", pattern, err)
+		}
+		if len(matches) == 0 {
+			return fmt.Errorf("asset pattern %q matched no files", pattern)
+		}
+		for _, match := range matches {
+			path := filepath.Clean(match)
+			if _, ok := seen[path]; ok {
+				continue
+			}
+			seen[path] = struct{}{}
+			info, err := os.Stat(path)
+			if err != nil {
+				return fmt.Errorf("stat asset %q: %w", path, err)
+			}
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("asset %q is not a regular file", path)
+			}
+			if err := c.uploadReleaseAsset(ctx, cfg, releaseID, path); err != nil {
+				return fmt.Errorf("upload asset %q: %w", path, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (c *creator) uploadReleaseAsset(ctx context.Context, cfg Config, releaseID int64, path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("open file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	baseURL, err := apiBaseURL(cfg)
+	if err != nil {
+		return err
+	}
+	endpoint := fmt.Sprintf("%s/repos/%s/%s/releases/%d/assets",
+		baseURL, url.PathEscape(cfg.Owner), url.PathEscape(cfg.Repo), releaseID)
+	reader, writer := io.Pipe()
+	form := multipart.NewWriter(writer)
+	writeDone := make(chan error, 1)
+	go func() {
+		part, writeErr := form.CreateFormFile("attachment", filepath.Base(path))
+		if writeErr == nil {
+			_, writeErr = io.Copy(part, file)
+		}
+		if closeErr := form.Close(); writeErr == nil {
+			writeErr = closeErr
+		}
+		if writeErr != nil {
+			_ = writer.CloseWithError(writeErr)
+		} else {
+			_ = writer.Close()
+		}
+		writeDone <- writeErr
+	}()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, reader)
+	if err != nil {
+		_ = reader.Close()
+		<-writeDone
+		return fmt.Errorf("build upload request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "token "+cfg.Token)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+	resp, err := c.client.Do(req)
+	if err != nil {
+		_ = reader.Close()
+		<-writeDone
+		return fmt.Errorf("send upload request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if writeErr := <-writeDone; writeErr != nil {
+		return fmt.Errorf("write upload body: %w", writeErr)
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		responseBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		if readErr != nil {
+			return fmt.Errorf("unexpected status %s (reading body: %v)", resp.Status, readErr)
+		}
+		return fmt.Errorf("unexpected status %s: %s", resp.Status, strings.TrimSpace(string(responseBody)))
+	}
+	return nil
+}
+
+func splitAssets(raw string) []string {
+	parts := strings.Split(raw, ",")
+	patterns := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if pattern := strings.TrimSpace(part); pattern != "" {
+			patterns = append(patterns, pattern)
+		}
+	}
+	return patterns
 }
 
 // CommentOnPullRequests comments on pull requests associated with release commits.

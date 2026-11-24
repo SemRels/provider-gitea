@@ -47,6 +47,7 @@ plugins:
       owner: "acme"
       repo: "service-api"
       draft: "false"
+      assets: "dist/*.tar.gz,dist/*.zip,dist/*.sbom.json,dist/*.sig"
       comment_on_prs: "true"
 ```
 
@@ -61,6 +62,7 @@ Every option can be set as an entry under `args` in `.semrel.yaml`. semrel passe
 | `owner` | `SEMREL_PLUGIN_OWNER` | Optional | Repository owner. Defaults from the git remote when available. | Derived from git remote |
 | `repo` | `SEMREL_PLUGIN_REPO` | Optional | Repository name. Defaults from the git remote when available. | Derived from git remote |
 | `draft` | `SEMREL_PLUGIN_DRAFT` | Optional | Create the release as a draft. | false |
+| `assets` | `SEMREL_PLUGIN_ASSETS` | Optional | Comma-separated file paths or glob patterns to attach to the Gitea release. Every pattern must match; upload failures fail the plugin. | None |
 | `comment_on_prs` | `SEMREL_PLUGIN_COMMENT_ON_PRS` | Optional | Comment on pull requests associated with commits in the release. Defaults to true; set to `false` to disable. The token needs repository read and issue write permissions. | true |
 
 ## `SEMREL_*` release context used
@@ -75,7 +77,7 @@ Every option can be set as an entry under `args` in `.semrel.yaml`. semrel passe
 
 ## Example behavior
 
-The plugin creates a Gitea release for the current tag and uploads the generated release notes from semrel. By default it posts an idempotent release link comment to associated merged pull requests. Set `SEMREL_PLUGIN_COMMENT_ON_PRS` to `false` to disable comments.
+The plugin creates a Gitea release for the current tag, uses the generated changelog as its release body, and attaches files matched by `SEMREL_PLUGIN_ASSETS`. A missing match or failed upload returns an error. By default it posts an idempotent release link comment to associated merged pull requests. Set `SEMREL_PLUGIN_COMMENT_ON_PRS` to `false` to disable comments.
 
 ## License
 

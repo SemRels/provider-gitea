@@ -7,8 +7,11 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -26,6 +29,7 @@ func TestConfigFromEnvSuccess(t *testing.T) {
 		"SEMREL_PLUGIN_BODY":       "notes",
 		"SEMREL_PLUGIN_DRAFT":      "true",
 		"SEMREL_PLUGIN_PRERELEASE": "false",
+		"SEMREL_PLUGIN_ASSETS":     "dist/*.zip, checksums.txt",
 	}))
 
 	require.NoError(t, err)
@@ -40,6 +44,7 @@ func TestConfigFromEnvSuccess(t *testing.T) {
 	require.True(t, *cfg.Draft)
 	require.NotNil(t, cfg.Prerelease)
 	require.False(t, *cfg.Prerelease)
+	require.Equal(t, "dist/*.zip, checksums.txt", cfg.Assets)
 	require.True(t, cfg.CommentOnPRs)
 }
 
@@ -151,6 +156,61 @@ func TestCreateReleaseSuccess(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(42), release.ID)
 	require.Equal(t, "https://gitea.example.com/owner/repo/releases/tag/v1.2.3", release.URL)
+}
+
+func TestCreateReleaseUploadsConfiguredAssets(t *testing.T) {
+	assetPath := filepath.Join(t.TempDir(), "sbom.json")
+	require.NoError(t, os.WriteFile(assetPath, []byte("sbom"), 0o600))
+	assetSeen := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/repos/owner/repo/releases":
+			require.Equal(t, http.MethodPost, r.Method)
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"id": 42, "html_url": "https://gitea.example.com/owner/repo/releases/tag/v1.2.3",
+			}))
+		case "/api/v1/repos/owner/repo/releases/42/assets":
+			require.Equal(t, http.MethodPost, r.Method)
+			require.Equal(t, "token secret", r.Header.Get("Authorization"))
+			file, header, err := r.FormFile("attachment")
+			require.NoError(t, err)
+			defer func() { _ = file.Close() }()
+			require.Equal(t, "sbom.json", header.Filename)
+			data, err := io.ReadAll(file)
+			require.NoError(t, err)
+			require.Equal(t, "sbom", string(data))
+			assetSeen = true
+			w.WriteHeader(http.StatusCreated)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	creator := New(server.Client())
+	release, err := creator.CreateRelease(context.Background(), Config{
+		BaseURL: server.URL, Token: "secret", Owner: "owner", Repo: "repo",
+		TagName: "v1.2.3", Name: "v1.2.3", Assets: assetPath,
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(42), release.ID)
+	require.True(t, assetSeen)
+}
+
+func TestCreateReleaseRejectsUnmatchedAssetPattern(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": 42})
+	}))
+	defer server.Close()
+
+	creator := New(server.Client())
+	_, err := creator.CreateRelease(context.Background(), Config{
+		BaseURL: server.URL, Token: "secret", Owner: "owner", Repo: "repo",
+		TagName: "v1.2.3", Name: "v1.2.3",
+		Assets: filepath.Join(t.TempDir(), "missing-*.tar.gz"),
+	})
+	require.ErrorContains(t, err, "matched no files")
 }
 
 func TestCreateReleaseOmitsOptionalBooleans(t *testing.T) {
