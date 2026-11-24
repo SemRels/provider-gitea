@@ -250,7 +250,7 @@ func (c *creator) uploadReleaseAsset(ctx context.Context, cfg Config, releaseID 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, reader)
 	if err != nil {
 		_ = reader.Close()
-		<-writeDone
+		_ = <-writeDone
 		return fmt.Errorf("build upload request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
@@ -259,7 +259,7 @@ func (c *creator) uploadReleaseAsset(ctx context.Context, cfg Config, releaseID 
 	resp, err := c.client.Do(req)
 	if err != nil {
 		_ = reader.Close()
-		<-writeDone
+		_ = <-writeDone
 		return fmt.Errorf("send upload request: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
