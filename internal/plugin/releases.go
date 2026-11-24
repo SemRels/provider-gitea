@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -250,8 +251,7 @@ func (c *creator) uploadReleaseAsset(ctx context.Context, cfg Config, releaseID 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, reader)
 	if err != nil {
 		_ = reader.Close()
-		_ = <-writeDone
-		return fmt.Errorf("build upload request: %w", err)
+		return fmt.Errorf("build upload request: %w", errors.Join(err, <-writeDone))
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "token "+cfg.Token)
@@ -259,8 +259,7 @@ func (c *creator) uploadReleaseAsset(ctx context.Context, cfg Config, releaseID 
 	resp, err := c.client.Do(req)
 	if err != nil {
 		_ = reader.Close()
-		_ = <-writeDone
-		return fmt.Errorf("send upload request: %w", err)
+		return fmt.Errorf("send upload request: %w", errors.Join(err, <-writeDone))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if writeErr := <-writeDone; writeErr != nil {
