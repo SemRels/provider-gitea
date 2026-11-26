@@ -46,6 +46,9 @@ func runWithCreator(ctx context.Context, getenv func(string) string, stdout, std
 
 	if isDryRun(getenv("SEMREL_DRY_RUN")) {
 		_, _ = fmt.Fprintf(stdout, "[dry-run] would create Gitea release %s for %s/%s\n", cfg.TagName, cfg.Owner, cfg.Repo)
+		if cfg.Assets != "" {
+			_, _ = fmt.Fprintf(stdout, "assets: %s\n", cfg.Assets)
+		}
 		return 0
 	}
 
